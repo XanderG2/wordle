@@ -34,8 +34,6 @@ if not colors:
     print("Havent added functionality for this yet lmao. Skill issue")
     exit("Skill issue")
 
-word = random.choice(validWords)
-
 clear()
 
 print("--------- Python Wordle ---------")
@@ -43,6 +41,7 @@ print(f"Selected letters: {letters}")
 print()
 
 while True:
+    word = random.choice(validWords)
     while True: # Main game loop
         while True:
             guess = input().strip()
@@ -50,13 +49,20 @@ while True:
                 print("Please guess the correct amount of letters!")
                 time.sleep(2)
                 clearLine()
+                clearLine()
+                continue
+            if guess not in validWords:
+                print("Please guess an existing word!")
+                time.sleep(2)
+                clearLine()
+                clearLine()
                 continue
             break
         clearLine()
         truth = ""
         corrects = 0
-        lets = {w: a for w, a in zip(word, [word.count(x) for x in word])} # word: appearences // useful for yellow marking (if word has only 1 of a letter only
-        for i, x in enumerate(guess):                                                                                         # mark it once, etc.)
+        lets = {w: a for w, a in zip(word, [word.count(x) for x in word])} # word: appearences // useful for yellow marking (if word has only 1 of a
+        for i, x in enumerate(guess):                                                                                       # letter only mark it once, etc.)
             if word[i] == x:
                 truth += CORRECT + x + RESET
                 corrects += 1

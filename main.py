@@ -3,6 +3,8 @@ import os, random, time
 clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
 clearLine = lambda: print("\033[1A\033[2K\r", end="")
 
+clear()
+
 try:
     with open("allWords.txt", "r") as f:
         words = f.readlines()
@@ -36,11 +38,10 @@ if not colors:
 
 clear()
 
-print("--------- Python Wordle ---------")
-print(f"Selected letters: {letters}")
-print()
-
 while True:
+    print("--------- Python Wordle ---------")
+    print(f"Selected letters: {letters}")
+    print()
     word = random.choice(validWords)
     while True: # Main game loop
         while True:
@@ -59,20 +60,21 @@ while True:
                 continue
             break
         clearLine()
-        truth = ""
+        truth = ["" for i in range(letters)]
         corrects = 0
         lets = {w: a for w, a in zip(word, [word.count(x) for x in word])} # word: appearences // useful for yellow marking (if word has only 1 of a
         for i, x in enumerate(guess):                                                                                       # letter only mark it once, etc.)
             if word[i] == x:
-                truth += CORRECT + x + RESET
+                truth[i] = CORRECT + x + RESET
                 corrects += 1
                 lets[x] -= 1
-            elif x in word and lets[x] > 0:
-                truth += WRONG_PLACE + x + RESET
+        for i, x in enumerate(guess): 
+            if x in word and lets[x] > 0 and not word[i] == x:
+                truth[i] = WRONG_PLACE + x + RESET
                 lets[x] -= 1
-            else:
-                truth += WRONG + x + RESET
-        print(truth)
+            elif not word[i] == x:
+                truth[i] = WRONG + x + RESET
+        print("".join(truth))
         if corrects == letters:
             break
     again = input("Well done!\nAgain? (y/n)\n> ") in ["y", "yes"]

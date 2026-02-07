@@ -13,12 +13,20 @@ except FileNotFoundError:
 
 maxLetters = max(map(len, words))
 
+dev = False
+
 while True:
     try:
-        letters = int(input("Please enter the amount of letters in the word you would like to guess:\n> "))
-        if not 2 < letters <= maxLetters:
-            print(f"Please enter a value between 3 and {maxLetters}.")
-            continue
+        letters = input("Please enter the amount of letters in the word you would like to guess:\n> ")
+        if letters != "dev":
+            letters = int(letters)
+            if not 2 < letters <= maxLetters:
+                print(f"Please enter a value between 3 and {maxLetters}.")
+                continue
+        else:
+            print("Dev mode activated.")
+            dev = True
+            letters = int(input("Please enter the amount of letters in the word you would like to guess:\n> "))
         break
     except ValueError:
         print("Please put a number.")
@@ -41,8 +49,8 @@ clear()
 while True:
     print("--------- Python Wordle ---------")
     print(f"Selected letters: {letters}")
-    print()
-    word = random.choice(validWords)
+    print("Dev mode\n" if dev else "")
+    word = input("Word: ") if dev else random.choice(validWords)
     while True: # Main game loop
         while True:
             guess = input().strip()
@@ -52,7 +60,7 @@ while True:
                 clearLine()
                 clearLine()
                 continue
-            if guess not in validWords:
+            if guess not in validWords and not dev:
                 print("Please guess an existing word!")
                 time.sleep(2)
                 clearLine()

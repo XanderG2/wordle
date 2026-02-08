@@ -1,6 +1,6 @@
 # Wordle
 
-Wordle built using Python for the console.
+Wordle-like game built using Python for the console.
 
 ## Info
 

@@ -8,34 +8,30 @@ clear()
 
 try:
     with open("allWords.txt", "r") as f:
-        words = f.readlines()
+        words = [x.strip() for x in f.readlines()]
 except FileNotFoundError:
-    exit("No word file found, please ensure you have downloaded the whole project.")
+    print("No word file found, please ensure you have downloaded the whole project or imported your own word list to allWords.txt")
+    path = "."
+    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.endswith(".txt")]
+    print("All text files found in directory:")
+    for i, file in enumerate(files): print(f"{i}. {file}")
+    file = input("If your word file is one of these, please enter the number, if it is not, please put it into the current folder and retry (press enter).\n> ")
+    if file:
+        try:
+            file = int(file)
+            if not 0 <= file < len(files):
+                raise SystemExit("Please type a number in the list.")
+        except ValueError:
+            raise SystemExit("Please type a number in the list.")
+    else:
+        raise SystemExit("Please add word file to directory.")
+    with open(files[file], "r") as f:
+        words = [x.strip() for x in f.readlines()]
+        if len(words) == 0:
+            raise SystemExit("No words in file.")
 
 maxLetters = max(map(len, words))
-
-dev = False
-
-while True:
-    try:
-        letters = input("Please enter the amount of letters in the word you would like to guess:\n> ")
-        validWords = []
-        if letters != "dev":
-            letters = int(letters)
-            if not 2 < letters <= maxLetters:
-                print(f"Please enter a value between 3 and {maxLetters}.")
-                continue
-            validWords = [x.strip() for x in words if len(x.strip()) == letters]
-            if len(validWords) == 0:
-                print(f"There are no words {letters} letters long")
-        else:
-            print("Dev mode activated.")
-            dev = True
-            letters = int(input("Please enter the amount of letters in the word you would like to guess:\n> "))
-        break
-    except ValueError:
-        print("Please put a number.")
-
+minLetters = min(map(len, words))
 
 CORRECT = "\033[42m"       # Green background
 WRONG_PLACE = "\033[43m"   # Yellow background
@@ -47,9 +43,30 @@ colors = input(CORRECT + "Can you see the background color? (y/n)" + RESET + "\n
 clear()
 
 while True:
+    while True:
+        try:
+            letters = input(f"Please enter the amount of letters in the word you would like to guess ({3 if minLetters <3 else minLetters}-{maxLetters}):\n> ")
+            validWords = []
+            if letters != "dev":
+                dev = False
+                letters = int(letters)
+                if not 2 < letters <= maxLetters:
+                    print(f"Please enter a value between {3 if minLetters <3 else minLetters} and {maxLetters}.")
+                    continue
+                validWords = [x.strip() for x in words if len(x.strip()) == letters]
+                if len(validWords) == 0:
+                    print(f"There are no words {letters} letters long")
+            else:
+                print("Dev mode activated.")
+                dev = True
+                letters = int(input("Please enter the amount of letters in the word you would like to guess:\n> "))
+            break
+        except ValueError:
+            print("Please put a number.")
     print("--------- Python Wordle ---------")
     print(f"Selected letters: {letters}")
-    print("Dev mode\n" if dev else "")
+    print("Dev mode\n" if dev else "", end="")
+    print("C = Correct place   W = Wrong place   X = Not in word" if not colors else "", end="\n\n")
     word = input("Word: ") if dev else random.choice(validWords)
     while True: # Main game loop
         while True:
@@ -90,15 +107,15 @@ while True:
             lets = {w: a for w, a in zip(word, [word.count(x) for x in word])} # word: appearences // useful for yellow marking (if word has only 1 of a
             for i, x in enumerate(guess):                                                                                       # letter only mark it once, etc.)
                 if word[i] == x:
-                    truth[i] = "✅"
+                    truth[i] = "C"
                     corrects += 1
                     lets[x] -= 1
             for i, x in enumerate(guess): 
                 if x in word and lets[x] > 0 and not word[i] == x:
-                    truth[i] = "🟨"
+                    truth[i] = "W"
                     lets[x] -= 1
                 elif not word[i] == x:
-                    truth[i] = "❌"
+                    truth[i] = "X"
             print("".join(truth))
         if corrects == letters:
             break

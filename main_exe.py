@@ -16,20 +16,21 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 with open(resource_path("allWords.txt"), "r") as f:
-    words = f.readlines()
+    words = [x.strip() for x in f.readlines()]
 
 maxLetters = max(map(len, words))
+minLetters = min(map(len, words))
 
 dev = False
 
 while True:
     try:
-        letters = input("Please enter the amount of letters in the word you would like to guess:\n> ")
+        letters = input(f"Please enter the amount of letters in the word you would like to guess ({3 if minLetters <3 else minLetters}-{maxLetters}):\n> ")
         validWords = []
         if letters != "dev":
             letters = int(letters)
             if not 2 < letters <= maxLetters:
-                print(f"Please enter a value between 3 and {maxLetters}.")
+                print(f"Please enter a value between {3 if minLetters <3 else minLetters} and {maxLetters}.")
                 continue
             validWords = [x.strip() for x in words if len(x.strip()) == letters]
             if len(validWords) == 0:

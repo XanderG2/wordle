@@ -2,61 +2,32 @@
 import os
 import random
 import time
-from enum import StrEnum
-from collections import Counter
-from dataclasses import dataclass
-
-
-class PlayStatusCode(StrEnum):
-    """
-    The Enum for the status code returned from `play()`
-    """
-    NORMAL = "normal"
-    GIVE_UP = "give up"
-    WON = "won"
-
-
-class Result(StrEnum):
-    """
-    The Enum for the correct/wrong/place of a letter
-    """
-    CORRECT = "C"
-    WRONG_PLACE = "W"
-    WRONG = "X"
-
-
-@dataclass
-class LetterRequest:
-    """
-    Return type of `request_letters()`. Contains `letters`,
-    `valid_words` and `dev`
-    """
-    letters: int
-    valid_words: list[str]
-    dev: bool
-
-
-@dataclass
-class GameConfig:
-    """
-    Docstring for Config
-    """
-    min_letters: int
-    max_letters: int
-    colors: bool
-    dev: bool = False
-    letters: int = 0  # to be redefined later
-
 
 WORD_FILE = "allWords.txt"
-CORRECT_ANSI = "\033[42m"       # Green background
-WRONG_PLACE_ANSI = "\033[43m"   # Yellow background
-WRONG_ANSI = "\033[40m"         # Black background
-RESET_ANSI = "\033[0m"          # Reset colour
-COLOR_KEY = {
-    Result.CORRECT: CORRECT_ANSI,
-    Result.WRONG_PLACE: WRONG_PLACE_ANSI,
-    Result.WRONG: WRONG_ANSI
+ANSI_CORRECT = "\033[42m"       # Green background
+ANSI_WRONG_PLACE = "\033[43m"   # Yellow background
+ANSI_WRONG = "\033[40m"         # Black background
+ANSI_RESET = "\033[0m"          # Reset colour
+
+WRONG = "X"
+WRONG_PLACE = "W"
+CORRECT = "C"
+
+NONCOLOR_KEY = {
+    CORRECT: ANSI_CORRECT,
+    WRONG_PLACE: ANSI_WRONG_PLACE,
+    WRONG: ANSI_WRONG
+}
+
+PREFIX = {
+    CORRECT: "(",
+    WRONG_PLACE: "<",
+    WRONG: "-"
+}
+POSTFIX = {
+    CORRECT: ")",
+    WRONG_PLACE: ">",
+    WRONG: "-"
 }
 
 
@@ -93,6 +64,13 @@ def get_words(file_path: str) -> list[str]:
         raise SystemExit("No words in word file.")
 
     return words
+
+
+def index[T](haystack: list[T], needle: T) -> int:
+    try:
+        return haystack.index(needle)
+    except ValueError:
+        return -1
 
 
 def get_word_file_path(default_file_path: str) -> str:
@@ -137,25 +115,30 @@ def get_word_file_path(default_file_path: str) -> str:
 
 
 def request_letters(
-        words: list[str],
-        config: GameConfig
-) -> LetterRequest:
+        max_letters: int,
+        min_letters: int,
+        words: list[str]
+) -> tuple[int, list[str], bool]:
     """
     Ask user for amount of letters in word, will also determin dev mode
       on/off
 
+    :param max_letters: The length of the longest word in the words
+      file
+    :type max_letters: int
+    :param min_letters: The length of the shortest word in the words
+      file
+    :type min_letters: int
     :param words: The words in the words file
     :type words: list[str]
-    :param config: Info about the game configuration
-    :type config: GameConfig
-    :return: Instance of `LetterRequest` dataclass containing
-      `letters`, `valid_words`, and `dev`.
-    :rtype: LetterRequest
+    :return: Amount of letters in word, valid words list, developer
+      mode
+    :rtype: tuple[int, list[str], bool]
     """
     while True:
         letters_input: str = input(
             "Please enter the amount of letters in the word you would like "
-            f"to guess ({config.min_letters}-{config.max_letters}):\n> "
+            f"to guess ({min_letters}-{max_letters}):\n> "
         )
         if letters_input == "dev":
             print("Dev mode activated.")
@@ -163,7 +146,7 @@ def request_letters(
                 "Please enter the amount of letters in the word you would"
                 " like to guess:\n> "
             ))
-            return LetterRequest(letters=letters, valid_words=[], dev=True)
+            return letters, [], True
 
         if not letters_input.isdigit():
             print("Please put a number.")
@@ -171,10 +154,10 @@ def request_letters(
 
         letters: int = int(letters_input)
 
-        if letters < config.min_letters or letters > config.max_letters:
+        if letters < min_letters or letters > max_letters:
             print(
-                f"Please enter a value between {config.min_letters} and "
-                f"{config.max_letters}."
+                f"Please enter a value between {min_letters} and "
+                f"{max_letters}."
             )
             continue
 
@@ -185,10 +168,7 @@ def request_letters(
             print(f"There are no words {letters} letters long")
             continue
 
-        return LetterRequest(letters=letters,
-                             valid_words=valid_words,
-                             dev=False
-                             )
+        return letters, valid_words, False
 
 
 def validate_guess(
@@ -231,82 +211,85 @@ def validate_guess(
         return guess, False
 
 
-def format_letter(result: Result, letter: str) -> str:
+def format_letter(colors: bool, result: str, letter: str) -> str:
     """
     Format a letter with background colour according to the
     correct/wrong/place indicator
 
-    :param result: The correct/wrong/place of the letter
-    :type result: Result
+    :param result: `"C"`/`"W"`/`"X"` depending on correct/wrong/place
+      in word
+    :type result: str
     :param letter: The letter that is being formatted
     :type letter: str
     :return: The formatted letter
     :rtype: str
     """
-    return COLOR_KEY[result] + letter + RESET_ANSI
+    if not colors:
+        return PREFIX[result] + letter + POSTFIX[result] + " "
+    return NONCOLOR_KEY[result] + letter + ANSI_RESET
 
 
 def play(
-        config: GameConfig,
+        colors: bool,
+        letters: int,
         word: str,
         valid_words: list[str],
-) -> PlayStatusCode:
+        dev: bool
+) -> int:
     """
     The main part of the game. Returns status code 0-2.
     - 0: Everything is normal, the user has not won or given up.
     - 1: The user has given up.
     - 2: The user has won.
 
-    :param config: Info about the game configuration
-    :type config: GameConfig
+    :param colors: Whether the user's console can render background
+      colors.
+    :type colors: bool
+    :param letters: Amount of letters in word
+    :type letters: int
     :param word: The word the user is trying to guess
     :type word: str
     :param valid_words: The guessable words
     :type valid_words: list[str]
+    :param dev: Whether the user is in dev mode or not
+    :type dev: bool
     :return: Status code
-    :rtype: PlayStatusCode
+    :rtype: int
     """
-    guess, giveup = validate_guess(config.letters, valid_words, config.dev)
+    guess, giveup = validate_guess(letters, valid_words, dev)
 
     if giveup:
-        return PlayStatusCode.GIVE_UP
+        return 1
 
-    truth: list[Result] = [Result.WRONG] * config.letters
-    corrects: int = 0
+    # The color to use for each letter position
+    score: list[str] = [WRONG] * letters
+    # The letters we're guessing against, each correctly guessed letter gets replaced with _
+    target = [letter for letter in word]
+    # Matches all characters
+    winner = True
 
-    # useful for yellow marking
-    # if word has only 1 of a letter only mark it once, etc.
-    num_of_letters: Counter = Counter(word)
+    # Check exact matches
+    for i, letter in enumerate(guess):
+        if letter == target[i]:
+            target[i] = "_"
+            score[i] = CORRECT
+        else:
+            winner = False
+    if winner:
+        return 2
 
     for i, letter in enumerate(guess):
-        if word[i] == letter:
-            truth[i] = Result.CORRECT
-            corrects += 1
-            num_of_letters[letter] -= 1
+        idx = index(target, letter)
+        if idx >= 0:
+            target[idx] = "_"
+            score[i] = WRONG_PLACE
 
-    for i, letter in enumerate(guess):
-        if truth[i] is Result.CORRECT:
-            continue
+    out_chars = [format_letter(colors, score[i], letter)
+                 for i, letter in enumerate(guess)]
+    clear_line()
+    print("".join(out_chars))
 
-        if (letter in word and num_of_letters[letter] > 0):
-            truth[i] = Result.WRONG_PLACE
-            num_of_letters[letter] -= 1
-
-    if config.colors:
-        toPrint: list[str] = [""] * len(truth)
-        for i, letter in enumerate(guess):
-            result = truth[i]
-            toPrint[i] = format_letter(result, letter)
-
-        clear_line()
-        print("".join(toPrint))
-    else:
-        print("".join(truth))
-
-    if corrects == config.letters:
-        return PlayStatusCode.WON
-
-    return PlayStatusCode.NORMAL
+    return 0
 
 
 def main():
@@ -317,55 +300,40 @@ def main():
     min_letters: int = min(len(word) for word in words)
     min_letters = 3 if max_letters > 3 else min_letters
 
-    colors: bool = input(CORRECT_ANSI + "Can you see the background color? (y"
-                         "/n)" + RESET_ANSI + "\n> ").lower() in ["y", "yes"]
+    colors: bool = input(ANSI_CORRECT + "Can you see the background color? (y/n)" +
+                         ANSI_RESET + "\n> ").lower() in ["y", "yes"]
 
     clear()
-
-    initial_config: GameConfig = GameConfig(
-        max_letters=max_letters,
-        min_letters=min_letters,
-        colors=colors
-    )
-
-    playing: bool = True
+    playing = True
     while playing:
-        lettersInfo: LetterRequest = request_letters(words, initial_config)
-        valid_words: list[str] = lettersInfo.valid_words
-        config: GameConfig = initial_config
-        config.letters = lettersInfo.letters
-        config.dev = lettersInfo.dev
+        letters, valid_words, dev = request_letters(
+            max_letters, min_letters, words)
 
         clear()
         print("--------- Python Wordle ---------")
-        print(f"Selected letters: {config.letters}")
-        if config.dev:
+        print(f"Selected letters: {letters}")
+        if dev:
             print("Dev mode")
         print("Type 'giveup' to give up.")
         if not colors:
             print("C = Correct place   W = Wrong place   X = Not in word")
         print("\n")
 
-        word: str = input(
-            "Word: ") if config.dev else random.choice(valid_words)
-        status: PlayStatusCode = PlayStatusCode.NORMAL
+        word: str = input("Word: ") if dev else random.choice(valid_words)
+        giveup: bool = False
+        status: int = 0
 
-        while status is PlayStatusCode.NORMAL:
-            status = play(config, word, valid_words)
+        while not status:
+            status = play(colors, letters, word, valid_words, dev)
+            giveup = status == 1
 
-        if status is PlayStatusCode.GIVE_UP:
+        if giveup:
             print("Word was:", word)
         else:
             print("Well done!")
-
         playing = input("Again? (y/n)\n> ") in ["y", "yes"]
         clear()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        clear()
-        print("Goodbye!")
-        raise SystemExit(0)
+    main()

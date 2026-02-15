@@ -1,4 +1,3 @@
-# The python version
 import os
 import random
 import time

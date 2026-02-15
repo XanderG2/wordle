@@ -66,6 +66,11 @@ COLOR_KEY = {
     Result.WRONG_PLACE: WRONG_PLACE_ANSI,
     Result.WRONG: WRONG_ANSI
 }
+NONCOLOR_KEY = {
+    Result.CORRECT: ["<", ">"],
+    Result.WRONG_PLACE: ["?", "?"],
+    Result.WRONG: ["-", "-"]
+}
 
 
 def clear_console() -> None:
@@ -253,7 +258,7 @@ def validate_guess(
         return guess, False
 
 
-def format_letter(result: Result, letter: str) -> str:
+def format_letter(result: Result, letter: str, colors: bool) -> str:
     """
     Format a letter with background colour according to the
     correct/wrong/place indicator
@@ -262,10 +267,47 @@ def format_letter(result: Result, letter: str) -> str:
     :type result: Result
     :param letter: The letter that is being formatted
     :type letter: str
+    :param colors: Whether colors exist in the console
+    :type colors: bool
     :return: The formatted letter
     :rtype: str
     """
-    return COLOR_KEY[result] + letter + RESET_ANSI
+    if colors:
+        return COLOR_KEY[result] + letter + RESET_ANSI
+
+    toPrint: str = ""
+    toPrint += NONCOLOR_KEY[result][0]
+    toPrint += letter
+    toPrint += NONCOLOR_KEY[result][1]
+    return toPrint
+
+
+def render_round(
+        game_config: GameConfig,
+        guess: str,
+        truth: list[Result]
+) -> None:
+    """
+    Render and print the stuff in the round
+
+    :param game_config: Description
+    :type game_config: GameConfig
+    :param round_config: Description
+    :type round_config: RoundConfig
+    :param guess: Description
+    :type guess: str
+    :param truth: Description
+    :type truth: list[Result]
+    """
+    toPrint: list[str] = [""] * len(truth)
+    for i, letter in enumerate(guess):
+        result = truth[i]
+        toPrint[i] = format_letter(result, letter, game_config.colors)
+
+    clear_line()
+
+    # add a space between if no colors
+    print((" "*abs(game_config.colors-1)).join(toPrint))
 
 
 def play_round(
@@ -321,16 +363,7 @@ def play_round(
             truth[i] = Result.WRONG_PLACE
             num_of_letters[letter] -= 1
 
-    if game_config.colors:
-        toPrint: list[str] = [""] * len(truth)
-        for i, letter in enumerate(guess):
-            result = truth[i]
-            toPrint[i] = format_letter(result, letter)
-
-        clear_line()
-        print("".join(toPrint))
-    else:
-        print("".join(truth))
+    render_round(game_config, guess, truth)
 
     if corrects == round_config.letters:
         return PlayStatusCode.WON

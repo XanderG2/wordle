@@ -68,7 +68,7 @@ COLOR_KEY = {
 }
 
 
-def clear() -> None:
+def clear_console() -> None:
     """
     Clear the whole console
     """
@@ -268,7 +268,7 @@ def format_letter(result: Result, letter: str) -> str:
     return COLOR_KEY[result] + letter + RESET_ANSI
 
 
-def play(
+def play_round(
         game_config: GameConfig,
         round_config: RoundConfig,
         word: str,
@@ -349,7 +349,7 @@ def main():
     colors: bool = input(CORRECT_ANSI + "Can you see the background color? (y"
                          "/n)" + RESET_ANSI + "\n> ").lower() in ["y", "yes"]
 
-    clear()
+    clear_console()
 
     game_config: GameConfig = GameConfig(
         max_letters=max_letters,
@@ -365,7 +365,7 @@ def main():
             letters=lettersInfo.letters,
             dev=lettersInfo.dev
         )
-        clear()
+        clear_console()
         print("--------- Python Wordle ---------")
         print(f"Selected letters: {round_config.letters}")
         if round_config.dev:
@@ -380,7 +380,7 @@ def main():
         status: PlayStatusCode = PlayStatusCode.NORMAL
 
         while status is PlayStatusCode.NORMAL:
-            status = play(game_config, round_config, word, valid_words)
+            status = play_round(game_config, round_config, word, valid_words)
 
         if status is PlayStatusCode.GIVE_UP:
             print("Word was:", word)
@@ -388,13 +388,13 @@ def main():
             print("Well done!")
 
         playing = input("Again? (y/n)\n> ") in ["y", "yes"]
-        clear()
+        clear_console()
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        clear()
+        clear_console()
         print("Goodbye!")
         raise SystemExit(0)

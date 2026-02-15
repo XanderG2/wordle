@@ -351,7 +351,7 @@ def main():
             letters=lettersInfo.letters,
             dev=lettersInfo.dev
         )
-        # clear()
+        clear()
         print("--------- Python Wordle ---------")
         print(f"Selected letters: {round_config.letters}")
         if round_config.dev:
